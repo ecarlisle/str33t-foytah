@@ -1,10 +1,24 @@
-<!DOCTYPE html>
-<html>
 <head>
     <title>Game Canvas</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+        canvas {
+            background-color: #222;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
+            outline: none;
+            /* Prevents blue focus outlines and text selection highlighting during intense matches */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
 </head>
-<body>
-    <canvas id="gameCanvas" width="800" height="450"></canvas>
-    <script src="game.js"></script>
-</body>
-</html>
