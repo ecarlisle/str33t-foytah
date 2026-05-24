@@ -6,10 +6,13 @@ class Fighter {
     this.side = side;
     this.width = 50;  
     this.height = 100;
-    this.x = side === 'P1' ? 150 : 600; // Safe starting spacing
-    this.y = 330;                      // Floor level alignment
+    this.x = side === 'P1' ? 150 : 600; 
+    this.y = 330;                      // Ground level clamp
     this.health = 100;
     this.vx = 0;
+    this.vy = 0;                       // Vertical velocity vector
+    this.gravity = 0.6;                // Gravitational constant pull
+    this.isGrounded = true;            // Ground state toggle
     this.isAttacking = false; 
     this.attackBox = {
       x: this.x,
@@ -25,15 +28,28 @@ class Fighter {
     this.isAttacking = true;
     setTimeout(() => {
       this.isAttacking = false;
-    }, 150); // Active collision window
+    }, 150); 
   }
 
   update() {
-    // Dynamic attack box flipping based on player orientation
+    // Apply Gravitational Force Acceleration
+    if (this.y + this.height < 430) {
+      this.vy += this.gravity;
+      this.isGrounded = false;
+    } else {
+      this.vy = 0;
+      this.y = 330; // Snap perfectly to the deck
+      this.isGrounded = true;
+    }
+
+    // Apply vertical displacement
+    this.y += this.vy;
+
+    // Sync attack box positions dynamically with movement vectors
     this.attackBox.x = this.x + (this.side === 'P1' ? this.width : -this.attackBox.width);
     this.attackBox.y = this.y + 20;
 
-    // Direct hardware button listeners
+    // Attack Input Triggers
     if (this.side === 'P1' && key.Space.pressed && !this.isAttacking) {
       this.attack();
     }
@@ -41,13 +57,13 @@ class Fighter {
       this.attack();
     }
 
-    // AABB Collision processing matrix
+    // Collision Processing
     if (this.isAttacking && this.opponent) {
       const collided = this.checkAABB(this.attackBox, this.opponent);
       if (collided) {
-        this.opponent.health -= 10; // Applies damage to target vector
+        this.opponent.health -= 10; 
         this.opponent.hitStun = true;
-        this.isAttacking = false;   // Prevents multi-hit collision frames
+        this.isAttacking = false;   
         
         setTimeout(() => {
           this.opponent.hitStun = false;
@@ -66,11 +82,9 @@ class Fighter {
   }
 
   render(ctx) {
-    // Flash white on impact, otherwise standard character tracking colors
     ctx.fillStyle = this.hitStun ? '#ffffff' : (this.side === 'P1' ? '#ef4444' : '#3b82f6');
     ctx.fillRect(this.x, this.y, this.width, this.height);
 
-    // Active strike zone overlay bounds
     if (this.isAttacking) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.fillRect(this.attackBox.x, this.attackBox.y, this.attackBox.width, this.attackBox.height);
@@ -137,32 +151,27 @@ player2.opponent = player1;
 function gameLoop() {
   window.requestAnimationFrame(gameLoop);
 
-  // Clear canvas clean every loop to prevent frame trailing artifacts
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // --- RENDERING ARCADE HEALTH BARS HUD ---
-  // Draw Static Underlayer Backgrounds (Red damage indicator)
+  // --- DRAW HUD (HEALTH BARS) ---
   ctx.fillStyle = HEALTH_BAR_COLOR;
   ctx.fillRect(HEALTH_BAR_X_P1, HEALTH_BAR_Y, HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT);
   ctx.fillRect(HEALTH_BAR_X_P2, HEALTH_BAR_Y, HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT);
 
-  // Calculate and draw Player 1 scaling foreground metric
   const healthWidthP1 = HEALTH_BAR_WIDTH * (Math.max(0, player1.health) / 100);
   ctx.fillStyle = HEALTH_FILL_COLOR;
   ctx.fillRect(HEALTH_BAR_X_P1, HEALTH_BAR_Y, healthWidthP1, HEALTH_BAR_HEIGHT);
   
-  // Calculate and draw Player 2 scaling foreground metric
   const healthWidthP2 = HEALTH_BAR_WIDTH * (Math.max(0, player2.health) / 100);
   ctx.fillStyle = HEALTH_FILL_COLOR;
   ctx.fillRect(HEALTH_BAR_X_P2, HEALTH_BAR_Y, healthWidthP2, HEALTH_BAR_HEIGHT);
 
-  // Write UI labels above tracking meters
   ctx.fillStyle = HEALTH_TEXT_COLOR;
   ctx.font = HEALTH_FONT;
   ctx.fillText('P1', HEALTH_BAR_X_P1, HEALTH_BAR_Y - 8);
   ctx.fillText('P2', HEALTH_BAR_X_P2 + HEALTH_BAR_WIDTH - 22, HEALTH_BAR_Y - 8);
 
-  // Draw Ground Deck
+  // Draw Ground Deck Line
   ctx.strokeStyle = '#06b6d4'; 
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -170,30 +179,40 @@ function gameLoop() {
   ctx.lineTo(canvas.width, 430);
   ctx.stroke();
 
-  // Process P1 Active Horizontal Vector Shifts
+  // Handle Player 1 Horizontal Movement Input
   player1.vx = 0;
   if (key.a.pressed) player1.vx = -5;
   if (key.d.pressed) player1.vx = 5;
   player1.x += player1.vx;
 
-  // Process P2 Active Horizontal Vector Shifts
+  // Handle Player 1 Jump Input Vector
+  if (key.W.pressed && player1.isGrounded) {
+    player1.vy = -12; // Launch impulse vector
+  }
+
+  // Handle Player 2 Horizontal Movement Input
   player2.vx = 0;
   if (key.ArrowLeft.pressed) player2.vx = -5;
   if (key.ArrowRight.pressed) player2.vx = 5;
   player2.x += player2.vx;
 
-  // Hard screen edge boundary limits
+  // Handle Player 2 Jump Input Vector
+  if (key.ArrowUp.pressed && player2.isGrounded) {
+    player2.vy = -12; // Launch impulse vector
+  }
+
+  // Clamping players inside horizontal layout screen margins
   player1.x = Math.max(0, Math.min(player1.x, canvas.width - player1.width));
   player2.x = Math.max(0, Math.min(player2.x, canvas.width - player2.width));
 
-  // Compute game logic matrices
+  // Compute logic changes
   player1.update();
   player2.update();
 
-  // Render player models to viewport frame
+  // Render models to canvas viewport
   player1.render(ctx);
   player2.render(ctx);
 }
 
-console.log("Master core engine running smoothly with HUD extensions loaded.");
+console.log("Master game engine fully compiled with Physics arcs running.");
 gameLoop();
