@@ -1,54 +1,71 @@
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
 class Fighter {
-  constructor(x, y, color) {
-    this.position = { x, y };
-    this.velocity = { x: 0, y: 0 };
-    this.height = 60;
-    this.width = 40;
-    this.health = 100;
-    this.isAttacking = false;
-    this.facingDirection = 'right';
-    this.color = color;
+  constructor() {
+    this.state = 'idle';
+    this.attackBox = {
+      position: { x: 0, y: 0 },
+      size: { width: 100, height: 50 },
+      direction: 'right'
+    };
+  }
+
+  attack() {
+    if (this.state === 'idle') {
+      this.state = 'attacking';
+      this.attackBox.position.x = this.position.x;
+      this.attackBox.position.y = this.position.y;
+      this.attackBox.direction = this.direction;
+    }
   }
 
   update() {
-    // Gravity
-    this.velocity.y += 0.6;
-    // Floor collision
-    if (this.position.y + this.height > 330) {
-      this.position.y = 330 - this.height;
-      this.velocity.y = 0;
+    if (this.state === 'attacking') {
+      this.drawAttackBox(); // Draw attack box for debugging
+      // Check collision with opponent's hurt box
+      if (checkAABB(this.attackBox, opponent.hurtBox)) {
+        opponent.health -= 10;
+        opponent.hitStun = true;
+      }
+      // Reset attack state after animation
+      if (this.attackTimer > 0) {
+        this.attackTimer--;
+        if (this.attackTimer === 0) {
+          this.state = 'idle';
+        }
+      }
     }
-    // Horizontal movement
-    if (this.velocity.x > 0) {
-      this.facingDirection = 'right';
-    } else if (this.velocity.x < 0) {
-      this.facingDirection = 'left';
-    }
-    // Update position
-    this.position.x += this.velocity.x;
-    this.position.y += this.velocity.y;
   }
 
-  draw() {
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+  drawAttackBox() {
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+    ctx.fillRect(
+      this.attackBox.position.x,
+      this.attackBox.position.y,
+      this.attackBox.size.width,
+      this.attackBox.size.height
+    );
   }
 }
 
-// Initialize game
-const player1 = new Fighter(100, 330, 'blue');
-const player2 = new Fighter(600, 330, 'red');
-
-function gameLoop() {
-  ctx.clearRect(0, 0, 800, 450);
-  player1.update();
-  player2.update();
-  player1.draw();
-  player2.draw();
-  requestAnimationFrame(gameLoop);
+// AABB collision detection function
+function checkAABB(attacker, defender) {
+  return (
+    attacker.position.x < defender.position.x + defender.size.width &&
+    attacker.position.x + attacker.size.width > defender.position.x &&
+    attacker.position.y < defender.position.y + defender.size.height &&
+    attacker.position.y + attacker.size.height > defender.position.y
+  );
 }
 
-requestAnimationFrame(gameLoop);
+// Hit stun visual effect
+function drawHitStun(opponent) {
+  if (opponent.hitStun) {
+    ctx.fillStyle = 'red';
+    ctx.fillRect(
+      opponent.position.x,
+      opponent.position.y,
+      opponent.size.width,
+      opponent.size.height
+    );
+    opponent.hitStun = false;
+  }
+}
