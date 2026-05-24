@@ -1,31 +1,106 @@
 // ==========================================
-// 1. CANVAS & CONTEXT INITIALIZATION
+// 1. THE FIGHTER ENTITY CLASS DEFINITION
 // ==========================================
-const canvas = document.querySelector('canvas') || document.getElementById('gameCanvas');
+class Fighter {
+  constructor(side) {
+    this.side = side;
+    this.width = 50;  
+    this.height = 100;
+    this.x = side === 'P1' ? 150 : 600; // Starting positions on screen
+    this.y = 330;                      // Ground level clamp
+    this.health = 100;
+    this.vx = 0;
+    this.isAttacking = false; 
+    this.attackBox = {
+      x: this.x,
+      y: this.y,
+      width: 100,
+      height: 50
+    };
+    this.hitStun = false;
+    this.opponent = null; 
+  }
+
+  attack() {
+    this.isAttacking = true;
+    setTimeout(() => {
+      this.isAttacking = false;
+    }, 150); // Active frame window
+  }
+
+  update() {
+    // Sync attack box positions dynamically with direction orientation
+    this.attackBox.x = this.x + (this.side === 'P1' ? this.width : -this.attackBox.width);
+    this.attackBox.y = this.y + 20;
+
+    // Listen for combat inputs to trigger the attack lifecycle
+    if (this.side === 'P1' && key.Space.pressed && !this.isAttacking) {
+      this.attack();
+    }
+    if (this.side === 'P2' && key.Enter.pressed && !this.isAttacking) {
+      this.attack();
+    }
+
+    // Collision Processing
+    if (this.isAttacking && this.opponent) {
+      const collided = this.checkAABB(this.attackBox, this.opponent);
+      if (collided) {
+        this.opponent.health -= 10; // Deals damage to opponent
+        this.opponent.hitStun = true;
+        this.isAttacking = false;   // Turn off box on impact
+        
+        setTimeout(() => {
+          this.opponent.hitStun = false;
+        }, 200);
+      }
+    }
+  }
+
+  checkAABB(box1, box2) {
+    return (
+      box1.x < box2.x + box2.width &&
+      box1.x + box1.width > box2.x &&
+      box1.y < box2.y + box2.height &&
+      box1.y + box1.height > box2.y
+    );
+  }
+
+  render(ctx) {
+    // Render Fighter Body (flashes white during hitStun)
+    ctx.fillStyle = this.hitStun ? '#ffffff' : (this.side === 'P1' ? '#ef4444' : '#3b82f6');
+    ctx.fillRect(this.x, this.y, this.width, this.height);
+
+    // Render Debug Active Hitbox Bounds
+    if (this.isAttacking) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.fillRect(this.attackBox.x, this.attackBox.y, this.attackBox.width, this.attackBox.height);
+    }
+  }
+}
+
+// ==========================================
+// 2. CANVAS & CONTEXT INITIALIZATION
+// ==========================================
+const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Hard-code layout metrics to match our strict 800x450 framework specification
 canvas.width = 800;
 canvas.height = 450;
 
 // ==========================================
-// 2. THE GLOBAL SIMULTANEOUS INPUT MAP
+// 3. THE GLOBAL SIMULTANEOUS INPUT MAP
 // ==========================================
 const key = {
-  // Player 1 Vectors
   a: { pressed: false },
   d: { pressed: false },
   W: { pressed: false },
   Space: { pressed: false },
-  
-  // Player 2 Vectors
   ArrowLeft: { pressed: false },
   ArrowRight: { pressed: false },
   ArrowUp: { pressed: false },
   Enter: { pressed: false }
 };
 
-// Map physical browser hardware events straight to our binary tracker state
 window.addEventListener('keydown', (event) => {
   const k = event.key === ' ' ? 'Space' : event.key;
   if (key[k]) key[k].pressed = true;
@@ -37,60 +112,56 @@ window.addEventListener('keyup', (event) => {
 });
 
 // ==========================================
-// 3. ENTITY INSTANTIATION
+// 4. ENTITY INSTANTIATION
 // ==========================================
 const player1 = new Fighter('P1');
 const player2 = new Fighter('P2');
 
-// Cross-link the instances so the AABB collision checks know who to damage
 player1.opponent = player2;
 player2.opponent = player1;
 
-// Give them basic placeholder horizontal velocities for physics movement
-player1.vx = 0;
-player2.vx = 0;
-
 // ==========================================
-// 4. THE CORE ENGINE LIFECYCLE LOOP
+// 5. THE CORE ENGINE LIFECYCLE LOOP
 // ==========================================
 function gameLoop() {
   window.requestAnimationFrame(gameLoop);
 
-  // CRITICAL: Wipe the canvas clean every frame to completely prevent sprite bleeding
+  // Clear canvas completely to prevent artifact trails
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw a placeholder ground floor line for visual alignment
-  ctx.strokeStyle = '#444';
+  // Draw neon cyan floor line boundary
+  ctx.strokeStyle = '#06b6d4'; 
+  ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(0, 430);
   ctx.lineTo(canvas.width, 430);
   ctx.stroke();
 
-  // Handle Player 1 Horizontal Movement Input Tracking
+  // Handle Player 1 Movement Input Vectors
   player1.vx = 0;
   if (key.a.pressed) player1.vx = -5;
   if (key.d.pressed) player1.vx = 5;
   player1.x += player1.vx;
 
-  // Handle Player 2 Horizontal Movement Input Tracking
+  // Handle Player 2 Movement Input Vectors
   player2.vx = 0;
   if (key.ArrowLeft.pressed) player2.vx = -5;
   if (key.ArrowRight.pressed) player2.vx = 5;
   player2.x += player2.vx;
 
-  // Basic screen edge boundaries (Keep players inside the 800px canvas window)
+  // Keep players clamped inside the screen margins
   player1.x = Math.max(0, Math.min(player1.x, canvas.width - player1.width));
   player2.x = Math.max(0, Math.min(player2.x, canvas.width - player2.width));
 
-  // Update entity combat lifecycles and collision physics matrices
+  // Run logic calculations
   player1.update();
   player2.update();
 
-  // Render our fighters and active debugging hitboxes to the viewport
+  // Render updates to canvas viewport
   player1.render(ctx);
   player2.render(ctx);
 }
 
-// Kickstart the engine!
-console.log("Engine loaded successfully. Starting game loop...");
+// Kickstart the engine execution thread
+console.log("Combined engine script compiled and executing.");
 gameLoop();
