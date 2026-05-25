@@ -8,7 +8,7 @@ fi
 
 # 2. Check Line Count (Prevents partial file wipes from lazy AI generation)
 LINE_COUNT=$(wc -l < game.js)
-if [ "$LINE_COUNT" -lt 180 ]; then
+if [ "$LINE_COUNT" -lt 230 ]; then
     echo "CRITICAL FAILURE: game.js is too small ($LINE_COUNT lines). Full code was wiped!"
     exit 1
 fi
@@ -28,6 +28,13 @@ fi
 # 5. Structural Loop Integrity Check
 if ! grep -q "function gameLoop" game.js; then
     echo "CRITICAL FAILURE: Main gameLoop function was erased from game.js!"
+    exit 1
+fi
+
+# 6. Execute Headless E2E Browser Test Simulation
+echo "Running automated Playwright gameplay simulation..."
+if ! npx playwright test game.spec.js --headless; then
+    echo "CRITICAL FAILURE: Gameplay test failed! The punch did not connect or register damage."
     exit 1
 fi
 
